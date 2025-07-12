@@ -1,35 +1,33 @@
-import asyncio
-from os import getenv
-from dotenv import load_dotenv
-from aiogram import Bot, Dispatcher, Router
-from aiogram.enums import ParseMode
-from aiogram.client.default import DefaultBotProperties
 import logging
+import asyncio
+from aiogram import Bot, Dispatcher
+from config import BOT_TOKEN
+from app.handlers import common, youtube
 
-from app.handlers.universal import universal_router
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    handlers=[logging.StreamHandler()]
+)
+logger = logging.getLogger("BOT")
 
-
-logging.basicConfig(level=logging.INFO, format="[%(asctime)s] %(levelname)s: %(message)s")
-logger = logging.getLogger(__name__)
-
-load_dotenv()
-
-root_router = Router()
-root_router.include_router(universal_router)
-
-async def main() -> None:
-    BOT_TOKEN = getenv('BOT_TOKEN')
-    if not BOT_TOKEN:
-        logger.error("BOT_TOKEN не найден в .env!")
+async def main():
+    logger.info("🟢 Бот запускается...")
+    if not BOT_TOKEN or not isinstance(BOT_TOKEN, str):
+        logger.critical("❌ BOT_TOKEN не найден! Укажите переменную окружения BOT_TOKEN.")
         return
-    bot = Bot(BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
-    dp = Dispatcher()
-    dp.include_router(root_router)
-    logger.info("Бот запущен. Ожидание событий...")
     try:
+        bot = Bot(token=BOT_TOKEN)
+        dp = Dispatcher()
+        dp.include_routers(common.router, youtube.router)
+        logger.info("🔄 Бот готов к работе. Ожидаем сообщения...")
         await dp.start_polling(bot)
     except Exception as e:
-        logger.exception(f"Ошибка при запуске бота: {e}")
+        logger.critical(f"🔴 КРИТИЧЕСКАЯ ОШИБКА: {e}")
+        raise
+    finally:
+        logger.info("Бот остановлен")
 
 if __name__ == "__main__":
     asyncio.run(main())
