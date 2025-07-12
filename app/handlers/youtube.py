@@ -1,9 +1,15 @@
-from aiogram import Router, F
-from aiogram.types import Message, FSInputFile, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
-from app.services.youtube_service import YouTubeService
+import os
 import logging
 import tempfile
-import os
+import time
+import subprocess
+
+from aiogram import Router, F
+from aiogram.types import Message, FSInputFile, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
+from aiogram.exceptions import TelegramEntityTooLarge
+
+from app.services.youtube_service import YouTubeService
+
 
 router = Router()
 logger = logging.getLogger("YOUTUBE_HANDLER")
@@ -73,6 +79,16 @@ def build_video_info_message(info, formats):
     )
     return msg
 
+def reencode_mp4_for_telegram(input_path, output_path):
+    cmd = [
+        'ffmpeg', '-y', '-i', input_path,
+        '-c:v', 'libx264', '-preset', 'fast', '-profile:v', 'main', '-level', '3.1',
+        '-c:a', 'aac', '-b:a', '128k',
+        '-movflags', '+faststart',
+        output_path
+    ]
+    subprocess.run(cmd, capture_output=True)
+
 @router.message(F.text.contains("youtube.com") | F.text.contains("youtu.be"))
 async def handle_youtube(message: Message):
     url = message.text
@@ -125,7 +141,6 @@ async def process_video_format(callback: CallbackQuery):
         return
     with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as f:
         temp_path = f.name
-    # Просто передаём format_id, yt-dlp сам мержит аудио/видео
     success = await YouTubeService.download_format(url, format_id, temp_path)
     if not success:
         if msg:
@@ -140,14 +155,56 @@ async def process_video_format(callback: CallbackQuery):
         if os.path.exists(temp_path):
             os.remove(temp_path)
         return
+    tg_limit = 2 * 1024 * 1024 * 1024
+    if file_size > tg_limit:
+        if msg:
+            await msg.reply("❗️ Файл слишком большой для отправки через Telegram (больше 2 ГБ).\nПопробуйте выбрать качество пониже!")
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+        return
     title = info.get('title', 'YouTube Video')
     if msg:
-        if file_size <= 50 * 1024 * 1024:
+        try:
+            logger.info(f"Пробую отправить видео: {temp_path}, размер: {file_size} байт")
+            try:
+                with open(temp_path, 'rb') as f:
+                    f.read(1024)
+                logger.info("Файл доступен для чтения")
+            except Exception as e:
+                logger.error(f"Файл не доступен для чтения: {e}")
             await msg.reply_video(FSInputFile(temp_path, filename=f"{title[:50]}.mp4"), caption=f"Готово! {title}")
-        else:
-            await msg.reply_document(FSInputFile(temp_path, filename=f"{title[:50]}.mp4"), caption=f"Готово! {title}\n(отправлено как файл из-за размера)")
+            logger.info("Видео успешно отправлено!")
+        except TelegramEntityTooLarge:
+            logger.warning("TelegramEntityTooLarge: пробую перекодировать файл")
+            recoded_path = temp_path.replace('.mp4', '_tg.mp4')
+            reencode_mp4_for_telegram(temp_path, recoded_path)
+            try:
+                await msg.reply_video(FSInputFile(recoded_path, filename=f"{title[:50]}_tg.mp4"), caption=f"Готово! {title}\n(перекодировано для Telegram)")
+                logger.info("Перекодированное видео успешно отправлено!")
+            except TelegramEntityTooLarge:
+                logger.error("TelegramEntityTooLarge даже после перекодирования")
+                await msg.reply("❗️ Файл не принят Telegram даже после перекодирования. Возможно, он не поддерживается. Попробуйте другой ролик или качество.")
+            except Exception as e:
+                logger.error(f"Ошибка при отправке перекодированного файла: {e}")
+                await msg.reply(f"❌ Ошибка при отправке перекодированного файла: {e}")
+            finally:
+                if os.path.exists(recoded_path):
+                    try:
+                        os.remove(recoded_path)
+                    except Exception:
+                        pass
+        except Exception as e:
+            logger.error(f"Ошибка при отправке файла: {e}")
+            await msg.reply(f"❌ Ошибка при отправке файла: {e}")
     if os.path.exists(temp_path):
-        os.remove(temp_path)
+        try:
+            os.remove(temp_path)
+        except PermissionError:
+            time.sleep(1)
+            try:
+                os.remove(temp_path)
+            except Exception:
+                pass
 
 @router.callback_query(F.data == "ytaudio_mp3")
 async def process_audio_mp3(callback: CallbackQuery):
@@ -185,14 +242,33 @@ async def process_audio_mp3(callback: CallbackQuery):
         if os.path.exists(temp_path):
             os.remove(temp_path)
         return
+    tg_limit = 2 * 1024 * 1024 * 1024
+    if file_size > tg_limit:
+        if msg:
+            await msg.reply("❗️ Файл слишком большой для отправки через Telegram (больше 2 ГБ).\nПопробуйте выбрать качество пониже!")
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+        return
     title = info.get('title', 'YouTube Audio')
     duration = info.get('duration', 0)
     minutes = duration // 60
     seconds = duration % 60
     if msg:
-        await msg.reply_audio(
-            FSInputFile(temp_path, filename=f"{title[:50]}.mp3"),
-            caption=f"Готово! {title}\n⏱ {minutes}:{seconds:02d}"
-        )
+        try:
+            await msg.reply_audio(
+                FSInputFile(temp_path, filename=f"{title[:50]}.mp3"),
+                caption=f"Готово! {title}\n⏱ {minutes}:{seconds:02d}"
+            )
+        except TelegramEntityTooLarge:
+            await msg.reply("❗️ Файл слишком большой для отправки через Telegram (ограничение сервера).\nПопробуйте выбрать качество пониже!")
+        except Exception as e:
+            await msg.reply(f"❌ Ошибка при отправке файла: {e}")
     if os.path.exists(temp_path):
-        os.remove(temp_path)
+        try:
+            os.remove(temp_path)
+        except PermissionError:
+            time.sleep(1)
+            try:
+                os.remove(temp_path)
+            except Exception:
+                pass

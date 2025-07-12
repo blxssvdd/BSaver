@@ -1,5 +1,7 @@
 # BSaver — Telegram YouTube Downloader Bot
 
+> ⚠️ **Внимание! Бот находится в активной разработке. Возможны баги, недоработки и неожиданные ошибки.**
+
 Бот для скачивания видео и аудио с YouTube прямо в Telegram.  
 Основан на [aiogram](https://github.com/aiogram/aiogram) и [yt-dlp](https://github.com/yt-dlp/yt-dlp).
 
@@ -63,3 +65,12 @@
 MIT
 
 ---
+
+### Планы на будущее
+
+В будущем, возможно, бот будет поддерживать скачивание видео и аудио не только с YouTube, но и с других платформ:
+- SoundCloud
+- Instagram
+- Spotify
+
+Следите за обновлениями!

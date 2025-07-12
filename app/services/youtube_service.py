@@ -1,7 +1,9 @@
-import yt_dlp
+from typing import Dict, Optional, List
 import logging
 import os
-from typing import Dict, Optional, List
+
+import yt_dlp
+
 
 logger = logging.getLogger("YOUTUBE")
 
