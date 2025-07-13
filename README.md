@@ -27,7 +27,7 @@
    pip install -r requirements.txt
    ```
 
-3. **Создайте файл `config.py`**  
+3. **Создайте файл `.env`**  
    Пример содержимого:
    ```python
    BOT_TOKEN = "ваш_токен_бота"
