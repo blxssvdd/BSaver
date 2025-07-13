@@ -51,7 +51,7 @@ class YouTubeService:
         logger.info(f"Путь для сохранения: {output_path}")
         
         try:
-            # Удаляем файл если он существует
+
             if os.path.exists(output_path):
                 try:
                     os.remove(output_path)
@@ -59,9 +59,9 @@ class YouTubeService:
                 except Exception as e:
                     logger.warning(f"Не удалось удалить существующий файл: {e}")
             
-            # Используем переданный format_id для выбора качества
+
             ydl_opts = {
-                'format': f'{format_id}+bestaudio/best',  # Используем выбранный формат + лучший аудио
+                'format': f'{format_id}+bestaudio/best',
                 'outtmpl': output_path.replace('.webm', '.mp4'),
                 'quiet': False,
                 'no_warnings': False,
@@ -98,7 +98,7 @@ class YouTubeService:
         logger.info(f"Скачиваем mp3 с YouTube: {url}")
         logger.info(f"Путь для сохранения: {output_path}")
         
-        # Удаляем файл если он существует
+
         if os.path.exists(output_path):
             try:
                 os.remove(output_path)
@@ -107,9 +107,9 @@ class YouTubeService:
                 logger.warning(f"Не удалось удалить существующий файл: {e}")
         
         try:
-            # Сначала пробуем стандартный способ
+
             ydl_opts = {
-                'format': 'bestaudio[ext=m4a]/bestaudio/best',  # Предпочитаем m4a
+                'format': 'bestaudio[ext=m4a]/bestaudio/best',
                 'outtmpl': output_path,
                 'quiet': False,
                 'no_warnings': False,
@@ -138,12 +138,12 @@ class YouTubeService:
                     logger.info(f"MP3 файл создан, размер: {file_size} байт")
                     return file_size > 0
                 else:
-                    # Проверяем файл с двойным расширением .mp3.mp3
+
                     double_ext_path = output_path + '.mp3'
                     if os.path.exists(double_ext_path):
                         file_size = os.path.getsize(double_ext_path)
                         logger.info(f"MP3 файл создан с двойным расширением, размер: {file_size} байт")
-                        # Переименовываем в правильное имя
+
                         os.rename(double_ext_path, output_path)
                         return file_size > 0
                     else:
@@ -153,14 +153,14 @@ class YouTubeService:
             except Exception as e:
                 logger.warning(f"Стандартный способ не работает: {e}")
                 
-                # Альтернативный способ: скачиваем аудио файл, потом конвертируем
+
                 temp_audio_path = output_path.replace('.mp3', '_temp.m4a')
                 
                 if os.path.exists(temp_audio_path):
                     os.remove(temp_audio_path)
                 
                 ydl_opts_alt = {
-                    'format': '140',  # m4a аудио
+                    'format': '140',
                     'outtmpl': temp_audio_path,
                     'quiet': False,
                     'no_warnings': False,
@@ -182,7 +182,7 @@ class YouTubeService:
                     logger.info(f"Аудио файл скачан, размер: {file_size} байт")
                     
                     if file_size > 0:
-                        # Конвертируем в MP3 с помощью FFmpeg
+    
                         import subprocess
                         try:
                             cmd = [
@@ -197,7 +197,7 @@ class YouTubeService:
                             if result.returncode == 0 and os.path.exists(output_path):
                                 final_size = os.path.getsize(output_path)
                                 logger.info(f"MP3 файл создан, размер: {final_size} байт")
-                                os.remove(temp_audio_path)  # Удаляем временный файл
+                                os.remove(temp_audio_path)
                                 return final_size > 0
                             else:
                                 logger.error(f"Ошибка конвертации: {result.stderr}")
