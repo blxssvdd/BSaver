@@ -4,7 +4,7 @@ import asyncio
 from aiogram import Bot, Dispatcher
 
 from config import BOT_TOKEN
-from app.handlers import common, youtube
+from app.handlers import routers, youtube
 
 logging.basicConfig(
     level=logging.INFO,
@@ -22,7 +22,7 @@ async def main():
     try:
         bot = Bot(token=BOT_TOKEN)
         dp = Dispatcher()
-        dp.include_routers(common.router, youtube.router)
+        dp.include_routers(routers.router, youtube.router)
         logger.info("🔄 Бот готов к работе. Ожидаем сообщения...")
         await dp.start_polling(bot)
     except Exception as e:
