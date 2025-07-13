@@ -1,9 +1,0 @@
-# Netscape HTTP Cookie File
-# http://curl.haxx.se/rfc/cookie_spec.html
-# This is a generated file!  Do not edit.
-
-.youtube.com	TRUE	/	TRUE	1786981337	PREF	tz=Europe.Kiev&f4=4000000&f6=40000000&f5=30000&f7=100
-.youtube.com	TRUE	/	TRUE	1768142623	NID	525=CoCwwuHE6LxEGgPHGMDOk1X8dbXY6_QEhqRtE63MM0EBuUBH3XvX2578i4OcM3veokE4fn3R42txwnHsG2NKcpPsq6Jf1qnazgH-imwaOTrquNnqUGTgdZs1c0Fkxo3hSrlR2_XHZxv2Bm3ewyooXG1W-m8AYyLstIV7XeWwoJZHqHwaFIel7M8hDNHzYwnAodXUAbKgZQkHwjZaZGtqTrEFdCg
-.youtube.com	TRUE	/	TRUE	1767973335	VISITOR_INFO1_LIVE	HnY0Hisfj8E
-.youtube.com	TRUE	/	TRUE	1767973335	VISITOR_PRIVACY_METADATA	CgJVQRIEGgAgUg%3D%3D
-.youtube.com	TRUE	/	TRUE	0	YSC	V8_wu3laxLw
