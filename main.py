@@ -2,6 +2,7 @@ import logging
 import asyncio
 
 from aiogram import Bot, Dispatcher
+from aiogram.types import BotCommand
 
 from config import BOT_TOKEN
 from app.handlers import routers, youtube
@@ -14,6 +15,16 @@ logging.basicConfig(
 )
 logger = logging.getLogger("BOT")
 
+
+async def set_commands(bot):
+    commands = [
+        BotCommand(command="help", description="Справка и возможности"),
+        BotCommand(command="privacy", description="Политика приватности"),
+        BotCommand(command="feedback", description="Обратная связь"),
+    ]
+    await bot.set_my_commands(commands)
+
+
 async def main():
     logger.info("🟢 Бот запускается...")
     if not BOT_TOKEN or not isinstance(BOT_TOKEN, str):
@@ -23,6 +34,7 @@ async def main():
         bot = Bot(token=BOT_TOKEN)
         dp = Dispatcher()
         dp.include_routers(routers.router, youtube.router)
+        await set_commands(bot)
         logger.info("🔄 Бот готов к работе. Ожидаем сообщения...")
         await dp.start_polling(bot)
     except Exception as e:

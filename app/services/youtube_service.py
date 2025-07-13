@@ -15,6 +15,7 @@ class YouTubeService:
             'quiet': True,
             'no_warnings': True,
             'extract_flat': False,
+            'cookiefile': 'cookies.txt',
         }
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -73,6 +74,7 @@ class YouTubeService:
                     'Accept-Language': 'en-US,en;q=0.9,ru;q=0.8',
                 },
                 'merge_output_format': 'mp4',
+                'cookiefile': 'cookies.txt',
             }
             
             logger.info(f"Настройки yt-dlp: {ydl_opts}")
@@ -124,6 +126,7 @@ class YouTubeService:
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
                     'Accept-Language': 'en-US,en;q=0.9,ru;q=0.8',
                 },
+                'cookiefile': 'cookies.txt',
             }
             
             logger.info(f"Настройки yt-dlp для MP3: {ydl_opts}")
@@ -170,6 +173,7 @@ class YouTubeService:
                         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
                         'Accept-Language': 'en-US,en;q=0.9,ru;q=0.8',
                     },
+                    'cookiefile': 'cookies.txt',
                 }
                 
                 logger.info("Пробуем альтернативный способ...")
