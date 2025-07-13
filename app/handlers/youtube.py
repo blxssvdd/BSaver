@@ -2,7 +2,7 @@ import os
 import logging
 import tempfile
 import time
-import subprocess
+import re
 
 from aiogram import Router, F
 from aiogram.types import Message, FSInputFile, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
@@ -15,6 +15,14 @@ router = Router()
 logger = logging.getLogger("YOUTUBE_HANDLER")
 
 STANDARD_QUALITIES = ['144p', '240p', '360p', '480p', '720p']
+
+def sanitize_filename(filename):
+    filename = re.sub(r'[^\w\s\-_.]', '', filename)
+    filename = re.sub(r'\s+', '_', filename)
+    filename = filename.strip('._')
+    if not filename:
+        filename = 'file'
+    return filename[:50]
 
 def build_formats_keyboard(formats):
     video_formats = {f"{f.get('height')}p": f for f in formats.get('video', []) if f.get('height') and f.get('height') <= 720}
@@ -79,15 +87,9 @@ def build_video_info_message(info, formats):
     )
     return msg
 
-def reencode_mp4_for_telegram(input_path, output_path):
-    cmd = [
-        'ffmpeg', '-y', '-i', input_path,
-        '-c:v', 'libx264', '-preset', 'fast', '-profile:v', 'main', '-level', '3.1',
-        '-c:a', 'aac', '-b:a', '128k',
-        '-movflags', '+faststart',
-        output_path
-    ]
-    subprocess.run(cmd, capture_output=True)
+
+
+
 
 @router.message(F.text.contains("youtube.com") | F.text.contains("youtu.be"))
 async def handle_youtube(message: Message):
@@ -172,27 +174,17 @@ async def process_video_format(callback: CallbackQuery):
                 logger.info("Файл доступен для чтения")
             except Exception as e:
                 logger.error(f"Файл не доступен для чтения: {e}")
-            await msg.reply_video(FSInputFile(temp_path, filename=f"{title[:50]}.mp4"), caption=f"Готово! {title}")
+            safe_filename = sanitize_filename(title) + ".mp4"
+            await msg.reply_video(
+                FSInputFile(temp_path, filename=safe_filename),
+                caption=f"Готово! {title}"
+            )
             logger.info("Видео успешно отправлено!")
         except TelegramEntityTooLarge:
-            logger.warning("TelegramEntityTooLarge: пробую перекодировать файл")
-            recoded_path = temp_path.replace('.mp4', '_tg.mp4')
-            reencode_mp4_for_telegram(temp_path, recoded_path)
-            try:
-                await msg.reply_video(FSInputFile(recoded_path, filename=f"{title[:50]}_tg.mp4"), caption=f"Готово! {title}\n(перекодировано для Telegram)")
-                logger.info("Перекодированное видео успешно отправлено!")
-            except TelegramEntityTooLarge:
-                logger.error("TelegramEntityTooLarge даже после перекодирования")
-                await msg.reply("❗️ Файл не принят Telegram даже после перекодирования. Возможно, он не поддерживается. Попробуйте другой ролик или качество.")
-            except Exception as e:
-                logger.error(f"Ошибка при отправке перекодированного файла: {e}")
-                await msg.reply(f"❌ Ошибка при отправке перекодированного файла: {e}")
-            finally:
-                if os.path.exists(recoded_path):
-                    try:
-                        os.remove(recoded_path)
-                    except Exception:
-                        pass
+            logger.warning("TelegramEntityTooLarge: файл слишком большой для Telegram")
+            await msg.reply("❗️ Файл слишком большой для отправки через Telegram (больше ~50 МБ).\nПопробуйте выбрать качество пониже или другой ролик.")
+            return
+
         except Exception as e:
             logger.error(f"Ошибка при отправке файла: {e}")
             await msg.reply(f"❌ Ошибка при отправке файла: {e}")
@@ -255,8 +247,9 @@ async def process_audio_mp3(callback: CallbackQuery):
     seconds = duration % 60
     if msg:
         try:
+            safe_filename = sanitize_filename(title) + ".mp3"
             await msg.reply_audio(
-                FSInputFile(temp_path, filename=f"{title[:50]}.mp3"),
+                FSInputFile(temp_path, filename=safe_filename),
                 caption=f"Готово! {title}\n⏱ {minutes}:{seconds:02d}"
             )
         except TelegramEntityTooLarge:
