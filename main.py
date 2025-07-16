@@ -33,7 +33,7 @@ async def main():
     try:
         bot = Bot(token=BOT_TOKEN)
         dp = Dispatcher()
-        dp.include_routers(routers.router, youtube.router)
+        dp.include_router(routers.router)
         await set_commands(bot)
         logger.info("🔄 Бот готов к работе. Ожидаем сообщения...")
         await dp.start_polling(bot)

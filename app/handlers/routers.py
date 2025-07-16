@@ -1,7 +1,17 @@
+import re
+import requests
+import os
 from aiogram import Router, F
-from aiogram.types import Message
+from aiogram.types import Message, FSInputFile, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
+from config import RAPIDAPI_KEY
+from app.services.youtube_service import YouTubeService
+from app.keyboards.builder import build_quality_keyboard
+import asyncio
+import string
+from .youtube import router as youtube_router
 
 router = Router()
+router.include_router(youtube_router)
 
 @router.message(F.text == "/start")
 async def cmd_start(message: Message):
@@ -52,3 +62,4 @@ async def cmd_feedback(message: Message):
         "Свяжитесь с поддержкой: @BSaverSupportbot\n\n"
         "Мы всегда открыты для обратной связи!"
     )
+

@@ -3,6 +3,7 @@ import logging
 import tempfile
 import time
 import re
+import glob
 
 from aiogram import Router, F
 from aiogram.types import Message, FSInputFile, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
@@ -175,10 +176,16 @@ async def process_video_format(callback: CallbackQuery):
             except Exception as e:
                 logger.error(f"Файл не доступен для чтения: {e}")
             safe_filename = sanitize_filename(title) + ".mp4"
-            await msg.reply_video(
-                FSInputFile(temp_path, filename=safe_filename),
-                caption=f"Готово! {title}"
-            )
+            if file_size <= 50 * 1024 * 1024:
+                await msg.reply_video(
+                    FSInputFile(temp_path, filename=safe_filename),
+                    caption=f"Готово! {title}"
+                )
+            else:
+                await msg.reply_document(
+                    FSInputFile(temp_path, filename=safe_filename),
+                    caption=f"Готово! {title} (отправлено как документ)"
+                )
             logger.info("Видео успешно отправлено!")
         except TelegramEntityTooLarge:
             logger.warning("TelegramEntityTooLarge: файл слишком большой для Telegram")
@@ -227,19 +234,29 @@ async def process_audio_mp3(callback: CallbackQuery):
         if os.path.exists(temp_path):
             os.remove(temp_path)
         return
-    file_size = os.path.getsize(temp_path)
+    # --- Исправление: ищем реальный mp3-файл, если temp_path не существует ---
+    file_path = temp_path
+    if not os.path.exists(file_path):
+        candidates = glob.glob(file_path.replace('.mp3', '*.mp3'))
+        if candidates:
+            file_path = candidates[0]
+        else:
+            if msg:
+                await msg.reply("❌ Не удалось найти скачанный MP3-файл.")
+            return
+    file_size = os.path.getsize(file_path)
     if file_size == 0:
         if msg:
             await msg.reply("❌ Не удалось скачать MP3: файл пустой. Попробуйте другой формат или ссылку.")
-        if os.path.exists(temp_path):
-            os.remove(temp_path)
+        if os.path.exists(file_path):
+            os.remove(file_path)
         return
     tg_limit = 2 * 1024 * 1024 * 1024
     if file_size > tg_limit:
         if msg:
             await msg.reply("❗️ Файл слишком большой для отправки через Telegram (больше 2 ГБ).\nПопробуйте выбрать качество пониже!")
-        if os.path.exists(temp_path):
-            os.remove(temp_path)
+        if os.path.exists(file_path):
+            os.remove(file_path)
         return
     title = info.get('title', 'YouTube Audio')
     duration = info.get('duration', 0)
@@ -249,19 +266,17 @@ async def process_audio_mp3(callback: CallbackQuery):
         try:
             safe_filename = sanitize_filename(title) + ".mp3"
             await msg.reply_audio(
-                FSInputFile(temp_path, filename=safe_filename),
-                caption=f"Готово! {title}\n⏱ {minutes}:{seconds:02d}"
+                FSInputFile(file_path, filename=safe_filename),
+                caption=f"Готово! {title}"
             )
-        except TelegramEntityTooLarge:
-            await msg.reply("❗️ Файл слишком большой для отправки через Telegram (ограничение сервера).\nПопробуйте выбрать качество пониже!")
         except Exception as e:
-            await msg.reply(f"❌ Ошибка при отправке файла: {e}")
-    if os.path.exists(temp_path):
+            await msg.reply(f"❌ Ошибка при отправке MP3: {e}")
+    if os.path.exists(file_path):
         try:
-            os.remove(temp_path)
+            os.remove(file_path)
         except PermissionError:
             time.sleep(1)
             try:
-                os.remove(temp_path)
+                os.remove(file_path)
             except Exception:
                 pass
